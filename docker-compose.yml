@@ -1,0 +1,75 @@
+version: '3'
+services:
+
+  # App Service
+  # Used to run the application
+  app:
+    image: alessandro1105/laravel-app
+    container_name: app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www # Bind this application inside the container
+      # - ./app/local.ini:/usr/local/etc/php/conf.d/local.ini # Decomment this line to use a custom local.ini config
+    networks:
+      - app-network
+
+  # Nginx Service
+  rproxy:
+    image: alessandro1105/laravel-rproxy
+    container_name: rproxy
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www # Bind this application inside the container
+      - ./nginx/conf.d/:/etc/nginx/conf.d/ # Decomment this line to use a custom rproxy config 
+    networks:
+      - app-network
+
+  # MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: laravel123
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - .tmp/mysql:/var/lib/mysql # Use a temporary dir to store mysql data
+      # - ./db/my.cnf:/etc/mysql/my.cnf # Decomment this line to use a custom mysql config 
+    networks:
+      - app-network
+
+  # phpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:4.8
+    container_name: phpmyadmin
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8080:80"
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: laravel123
+      PMA_ABSOLUTE_URI: ${APP_URL}/phpmyadmin
+    networks:
+      - app-network
+
+# Docker Networks
+networks:
+  app-network:
+    driver: bridge
